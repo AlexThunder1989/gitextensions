@@ -627,7 +627,7 @@ public static partial class AppSettings
 
     #region Avatars
 
-    public static string AvatarImageCachePath => Path.Join(LocalApplicationDataPath.Value!, "Images\\");
+    public static string AvatarImageCachePath => Path.Join(LocalApplicationDataPath.Value!, "Images");
 
     public static AvatarFallbackType AvatarFallbackType
     {
