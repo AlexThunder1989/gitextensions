@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <!-- Avalonia twin of the GitExtensions entry point. -->
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <UseWindowsForms>false</UseWindowsForms>
     <RootNamespace>GitExtensions</RootNamespace>
