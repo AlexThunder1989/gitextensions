@@ -24,6 +24,10 @@
       <Separator x:Name="sepGit" />
       <MenuItem x:Name="tsmiOpenWorkingDirectoryFile"
                 Header="_Open working directory file" />
+      <MenuItem x:Name="tsmiEditWorkingDirectoryFile"
+                Header="_Edit working directory file" />
+      <MenuItem x:Name="tsmiOpenWithDifftool"
+                Header="Open with di_fftool" />
       <MenuItem x:Name="tsmiCopyPaths"
                 Header="Copy _path(s)">
         <MenuItem.Icon>

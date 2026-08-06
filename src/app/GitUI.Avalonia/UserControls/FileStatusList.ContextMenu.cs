@@ -72,6 +72,8 @@ partial class FileStatusList
         tsmiCherryPickChanges.Click += (_, _) => _cherryPickChanges?.Invoke();
         btnRefresh.Click += (_, _) => _refreshParent?.Invoke();
         tsmiOpenWorkingDirectoryFile.Click += OpenWorkingDirectoryFile_Click;
+        tsmiEditWorkingDirectoryFile.Click += EditWorkingDirectoryFile_Click;
+        tsmiOpenWithDifftool.Click += OpenWithDifftool_Click;
         tsmiCopyPaths.Click += CopyPaths_Click;
         tsmiShowInFolder.Click += ShowInFolder_Click;
         tsmiShowInFileTree.Click += (_, _) => _openInFileTreeTab_AsBlame?.Invoke(false);
@@ -151,6 +153,13 @@ partial class FileStatusList
         sepGit.IsVisible = tsmiStageFile.IsVisible || tsmiUnstageFile.IsVisible || tsmiCherryPickChanges.IsVisible;
 
         tsmiOpenWorkingDirectoryFile.IsVisible = workingFileExists;
+
+        // Upstream drives these from RevisionDiffController, which the port does not have.
+        // ShouldShowMenuEditWorkingDirectoryFile is the same expression as canOpenFile above,
+        // and ShouldShowDifftoolMenus reduces to hasItems because the port has no
+        // display-only diff mode.
+        tsmiEditWorkingDirectoryFile.IsVisible = workingFileExists;
+        tsmiOpenWithDifftool.IsEnabled = hasItems;
         tsmiCopyPaths.IsEnabled = hasPath;
         tsmiShowInFolder.IsEnabled = absolutePath is not null
                                      && (File.Exists(absolutePath) || Directory.Exists(absolutePath));
@@ -190,6 +199,30 @@ partial class FileStatusList
         {
             OsShellUtil.Open(path);
         }
+    }
+
+    private void EditWorkingDirectoryFile_Click(object? sender, EventArgs e)
+    {
+        if (GetSelectedAbsolutePath() is string path && File.Exists(path)
+            && TryGetUICommandsDirect(out IGitUICommands? commands))
+        {
+            commands.StartFileEditorDialog(path);
+            _refreshParent?.Invoke();
+        }
+    }
+
+    private void OpenWithDifftool_Click(object? sender, EventArgs e)
+    {
+        if (SelectedFileStatusItem is not FileStatusItem item
+            || !TryGetUICommandsDirect(out IGitUICommands? commands))
+        {
+            return;
+        }
+
+        // Note: Order in revisions is that first clicked is last in array.
+        GitRevision?[] revisions = [item.SecondRevision, item.FirstRevision];
+        commands.OpenWithDifftool(
+            GetOwner(), revisions, item.Item.Name, item.Item.OldName, RevisionDiffKind.DiffAB, item.Item.IsTracked);
     }
 
     private void SetTreeExpansion(bool expanded, bool rootOnly)
