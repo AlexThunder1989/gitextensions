@@ -426,6 +426,12 @@ public partial class RevisionGridControl : GitModuleControl, ICheckRefs, IRevisi
         RefreshFilteredRevisions();
     }
 
+    private void ToggleHideMergeCommits()
+    {
+        _filterInfo.HideMergeCommits = !_filterInfo.HideMergeCommits;
+        RefreshFilteredRevisions();
+    }
+
     private void RefreshFilteredRevisions()
     {
         if (_lastModule is null)
@@ -1250,6 +1256,15 @@ public partial class RevisionGridControl : GitModuleControl, ICheckRefs, IRevisi
             case Command.ToggleShowGitNotesColumn: ToggleShowGitNotesColumn(); break;
             case Command.ToggleShowTags: ToggleShowTags(); break;
             case Command.ShowRemoteBranches: ToggleShowRemoteBranches(); break;
+            case Command.ShowAllBranches: ShowAllBranches(); break;
+            case Command.ShowCurrentBranchOnly: ShowCurrentBranchOnly(); break;
+            case Command.ShowFilteredBranches: ShowFilteredBranches(); break;
+            case Command.ShowReflogReferences: ToggleShowReflogReferences(); break;
+            case Command.ShowFirstParent: ToggleShowOnlyFirstParent(); break;
+            case Command.ToggleHideMergeCommits: ToggleHideMergeCommits(); break;
+            case Command.RevisionFilter: ShowRevisionFilterDialog(); break;
+            case Command.ResetRevisionFilter: ResetAllFiltersAndRefresh(); break;
+            case Command.ResetRevisionPathFilter: SetAndApplyPathFilter(""); break;
             case Command.SelectCurrentRevision: SelectCurrentRevision(); break;
             case Command.GoToParent:
             case Command.GoToFirstParent:

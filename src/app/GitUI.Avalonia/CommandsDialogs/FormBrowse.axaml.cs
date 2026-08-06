@@ -430,6 +430,7 @@ public sealed partial class FormBrowse : GitModuleForm
             RevisionGrid.ReloadRevisions(module, selectedObjectId: RevisionGrid.SelectedId);
             UpdateSubmodulesStructure();
             RefreshPushButton(module, branchName);
+            UICommands.RaisePostBrowseInitialize(this);
         }
         else
         {
@@ -1504,6 +1505,14 @@ public sealed partial class FormBrowse : GitModuleForm
 
     private void RefreshToolStripMenuItemClick(object? sender, EventArgs e)
     {
+        // Upstream gives F5 to a separate dashboard refresh command while no repository
+        // is open; here a single command serves both views.
+        if (dashboard.IsVisible)
+        {
+            dashboard.RefreshContent();
+            return;
+        }
+
         UICommands.RepoChangedNotifier.Notify();
         RefreshGitStatusMonitor();
     }
