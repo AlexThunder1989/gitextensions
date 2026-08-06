@@ -77,6 +77,7 @@
           <MenuItem x:Name="archiveRevisionToolStripMenuItem" Header="Arch_ive this commit...">
             <MenuItem.Icon><Image Width="16" Height="16" Source="{x:Static properties:Images.ArchiveRevision}" /></MenuItem.Icon>
           </MenuItem>
+          <MenuItem x:Name="openCommitsWithDiffToolMenuItem" Header="Open selected commits with _difftool" />
           <Separator x:Name="sepNavigate" />
           <MenuItem x:Name="navigateToolStripMenuItem" Header="_Navigate">
             <MenuItem.Icon><Image Width="16" Height="16" Source="{x:Static properties:Images.GotoCommit}" /></MenuItem.Icon>

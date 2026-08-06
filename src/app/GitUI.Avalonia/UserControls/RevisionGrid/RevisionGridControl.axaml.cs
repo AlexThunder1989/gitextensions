@@ -1,6 +1,7 @@
 ﻿using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -85,6 +86,7 @@ public partial class RevisionGridControl : GitModuleControl, ICheckRefs, IRevisi
     ];
 
     private readonly CancellationTokenSequence _refreshSequence = new();
+    private readonly CancellationTokenSequence _customDiffToolsSequence = new();
     private readonly TaskManager _taskManager = ThreadHelper.CreateTaskManager();
     private readonly FilterInfo _filterInfo = new();
     private readonly AuthorRevisionHighlighting _authorHighlighting = new();
@@ -157,6 +159,7 @@ public partial class RevisionGridControl : GitModuleControl, ICheckRefs, IRevisi
         revertCommitToolStripMenuItem.Click += RevertCommitToolStripMenuItemClick;
         cherryPickCommitToolStripMenuItem.Click += CherryPickCommitToolStripMenuItemClick;
         archiveRevisionToolStripMenuItem.Click += ArchiveRevisionToolStripMenuItemClick;
+        openCommitsWithDiffToolMenuItem.Click += diffSelectedCommitsMenuItem_Click;
         openBuildReportToolStripMenuItem.Click += (_, _) => OpenBuildReport(SelectedRevision);
         ToggleBetweenArtificialAndHeadCommitsMenuItem.Click += (_, _) => ToggleBetweenArtificialAndHeadCommits();
         GotoCurrentRevisionMenuItem.Click += (_, _) => SelectCurrentRevision();
@@ -276,6 +279,7 @@ public partial class RevisionGridControl : GitModuleControl, ICheckRefs, IRevisi
         SetInputGesture(ShowCurrentBranchOnlyMenuItem, Command.ShowCurrentBranchOnly);
         SetInputGesture(ShowFilteredBranchesMenuItem, Command.ShowFilteredBranches);
         SetInputGesture(ShowReflogReferencesMenuItem, Command.ShowReflogReferences);
+        SetInputGesture(openCommitsWithDiffToolMenuItem, Command.OpenCommitsWithDifftool);
         SetInputGesture(FilterMenuItem, Command.RevisionFilter);
         SetInputGesture(HighlightSelectedBranchMenuItem, Command.ToggleHighlightSelectedBranch);
         SetInputGesture(ShowRemoteBranchesMenuItem, Command.ShowRemoteBranches);
@@ -328,8 +332,36 @@ public partial class RevisionGridControl : GitModuleControl, ICheckRefs, IRevisi
     internal void CancelBackgroundTasks()
     {
         _refreshSequence.CancelCurrent();
+        _customDiffToolsSequence.CancelCurrent();
         _buildServerWatcher.CancelBuildStatusFetchOperation();
         _taskManager.JoinPendingOperations();
+    }
+
+    // Upstream populates this list from FormBrowse.HandleSettingsChanged, which the port does
+    // not have; FileStatusList.OnLoad is upstream's other entry point and fits a control here.
+    protected override void OnLoaded(RoutedEventArgs e)
+    {
+        base.OnLoaded(e);
+
+        LoadCustomDifftools();
+    }
+
+    public void LoadCustomDifftools()
+    {
+        List<CustomDiffMergeTool> menus =
+        [
+            new(openCommitsWithDiffToolMenuItem, diffSelectedCommitsMenuItem_Click)
+        ];
+
+        // InitMenus touches the menu items synchronously, so this must stay on the UI thread;
+        // the provider forgets the background half itself.
+        new CustomDiffMergeToolProvider().LoadCustomDiffMergeTools(
+            Module, menus, isDiff: true, cancellationToken: _customDiffToolsSequence.Next());
+    }
+
+    public void CancelLoadCustomDifftools()
+    {
+        _customDiffToolsSequence.CancelCurrent();
     }
 
     /// <inheritdoc />
@@ -430,6 +462,33 @@ public partial class RevisionGridControl : GitModuleControl, ICheckRefs, IRevisi
     {
         _filterInfo.HideMergeCommits = !_filterInfo.HideMergeCommits;
         RefreshFilteredRevisions();
+    }
+
+    private (ObjectId firstId, GitRevision? selectedRev) GetFirstAndSelected()
+    {
+        IReadOnlyList<GitRevision> revisions = GetSelectedRevisions();
+
+        return revisions.Count switch
+        {
+            0 => (default, null),
+            1 => (firstId: revisions[0].FirstParentId, selectedRev: revisions[0]),
+            _ => (firstId: revisions[^1].ObjectId, selectedRev: revisions[0])
+        };
+    }
+
+    private void diffSelectedCommitsMenuItem_Click(object? sender, EventArgs e)
+    {
+        string? toolName = (sender as MenuItem)?.Tag as string;
+        DiffSelectedCommitsWithDifftool(toolName);
+    }
+
+    public void DiffSelectedCommitsWithDifftool(string? customTool = null)
+    {
+        (ObjectId first, GitRevision? selected) = GetFirstAndSelected();
+        if (selected is not null)
+        {
+            Module.OpenWithDifftoolDirDiff(first.IsZero ? null : first.ToString(), selected.ObjectId.ToString(), customTool: customTool);
+        }
     }
 
     private void RefreshFilteredRevisions()
@@ -740,6 +799,9 @@ public partial class RevisionGridControl : GitModuleControl, ICheckRefs, IRevisi
             && selectedRevisions.Count is >= 1 and <= 2
             && selectedRevisions.All(selectedRevision => !selectedRevision.IsArtificial));
         SetVisible(openBuildReportToolStripMenuItem, !string.IsNullOrWhiteSpace(revision?.BuildStatus?.Url));
+
+        (ObjectId first, GitRevision? selected) = GetFirstAndSelected();
+        openCommitsWithDiffToolMenuItem.IsEnabled = !first.IsZero && selected is not null;
 
         sepCopy.IsVisible = copyToClipboardToolStripMenuItem.IsVisible;
         sepBranch.IsVisible = checkoutBranchToolStripMenuItem.IsVisible
@@ -1262,6 +1324,7 @@ public partial class RevisionGridControl : GitModuleControl, ICheckRefs, IRevisi
             case Command.ShowReflogReferences: ToggleShowReflogReferences(); break;
             case Command.ShowFirstParent: ToggleShowOnlyFirstParent(); break;
             case Command.ToggleHideMergeCommits: ToggleHideMergeCommits(); break;
+            case Command.OpenCommitsWithDifftool: DiffSelectedCommitsWithDifftool(); break;
             case Command.RevisionFilter: ShowRevisionFilterDialog(); break;
             case Command.ResetRevisionFilter: ResetAllFiltersAndRefresh(); break;
             case Command.ResetRevisionPathFilter: SetAndApplyPathFilter(""); break;
