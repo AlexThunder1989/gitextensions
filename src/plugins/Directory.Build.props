@@ -37,4 +37,14 @@
     <ProjectReference Include="$(RepoRoot)\src\app\GitExtensions.Extensibility\GitExtensions.Extensibility.csproj" />
   </ItemGroup>
 
+  <!-- CopyLocalLockFileAssemblies also copies the runtime-identifier natives of every
+       transitive package into each plugin directory, which multiplies the build output by the
+       number of plugins. A plugin is loaded by MEF into the host, which already carries them. -->
+  <Target Name="ExcludePluginRuntimeNatives" AfterTargets="ResolveReferences">
+    <ItemGroup>
+      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)"
+                               Condition="$([System.String]::Copy('%(ReferenceCopyLocalPaths.DestinationSubDirectory)').StartsWith('runtimes'))" />
+    </ItemGroup>
+  </Target>
+
 </Project>
