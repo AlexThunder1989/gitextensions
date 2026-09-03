@@ -336,7 +336,7 @@ partial class FileStatusList
     {
         if (GetSelectedAbsolutePath() is string path && TryGetUICommandsDirect(out IGitUICommands? commands))
         {
-            commands.StartFileEditorDialog(path);
+            commands.StartFileEditorDialog(path, lineNumber: _getLineNumber?.Invoke());
             RequestRefresh();
         }
     }
